@@ -1,0 +1,3 @@
+/robots.txt     /robots.txt                    200
+/security.txt   /.well-known/security.txt      200
+/*              /index.html                    200
