@@ -24,6 +24,7 @@ class LockActivity : Activity() {
     private var targetAppName: String = "Application"
     private var enteredPin: StringBuilder = StringBuilder()
     private var pinLength: Int = 4
+    private var isUnlocked: Boolean = false
 
     private lateinit var appNameText: TextView
     private lateinit var packageNameText: TextView
@@ -38,7 +39,11 @@ class LockActivity : Activity() {
             return Intent(context, LockActivity::class.java).apply {
                 putExtra(EXTRA_PACKAGE_NAME, packageName)
                 putExtra(EXTRA_APP_NAME, appName)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION
+                )
             }
         }
     }
@@ -46,11 +51,29 @@ class LockActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Prevent screen capture / task snapshot of the lock screen
+        // 1. Prevent screenshot, screen record, and task snapshot theft
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+
+        // 2. Real-device wake and overlay flags
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
 
         targetPackage = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: ""
         targetAppName = intent.getStringExtra(EXTRA_APP_NAME) ?: "Application"
+
+        // Fail-closed if target package is absent
+        if (targetPackage.isEmpty()) {
+            exitToHome()
+            return
+        }
 
         // Dynamically load configured PIN length from hardware crypto store
         pinLength = CryptoManager.getStoredPinLength(this)
@@ -151,6 +174,7 @@ class LockActivity : Activity() {
         val pin = enteredPin.toString()
         val isValid = CryptoManager.verifyPin(this, pin)
         if (isValid) {
+            isUnlocked = true
             CryptoManager.resetFailedAttempts(this)
             AppMonitorService.markPackageUnlocked(targetPackage)
             finish()
@@ -196,14 +220,33 @@ class LockActivity : Activity() {
         }
     }
 
-    override fun onBackPressed() {
-        // Pressing back on lock screen exits to Android Home launcher rather than granting access
+    private fun exitToHome() {
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(homeIntent)
         finish()
+    }
+
+    override fun onBackPressed() {
+        // Pressing back on lock screen exits to Android Home launcher rather than granting access
+        exitToHome()
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // If user triggers Home or Recents gesture while locked, bounce to Home launcher
+        if (!isUnlocked) {
+            exitToHome()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isUnlocked) {
+            finish()
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {

@@ -132,22 +132,43 @@ object CryptoManager {
     }
 
     fun verifyPin(context: Context, enteredPin: String): Boolean {
-        if (enteredPin.isEmpty()) return false
+        // Strict Fail-Closed: validate format before attempting crypto
+        if (enteredPin.isEmpty() || !enteredPin.matches(Regex("^[0-9]{4,6}$"))) {
+            Log.w(TAG, "Fail-closed: entered PIN failed format constraint")
+            return false
+        }
 
         return try {
             val prefs = getSecurePreferences(context)
-            val saltHex = prefs.getString(KEY_SALT, null) ?: return false
-            val storedHashHex = prefs.getString(KEY_HASH, null) ?: return false
+            val saltHex = prefs.getString(KEY_SALT, null) ?: run {
+                Log.w(TAG, "Fail-closed: salt missing from secure store")
+                return false
+            }
+            val storedHashHex = prefs.getString(KEY_HASH, null) ?: run {
+                Log.w(TAG, "Fail-closed: hash verifier missing from secure store")
+                return false
+            }
+
+            val storedLength = prefs.getInt(KEY_PIN_LENGTH, 0)
+            if (storedLength in 4..6 && enteredPin.length != storedLength) {
+                Log.w(TAG, "Fail-closed: PIN length mismatch with stored verifier")
+                return false
+            }
 
             val salt = hexToBytes(saltHex)
             val storedHash = hexToBytes(storedHashHex)
+
+            if (salt.isEmpty() || storedHash.isEmpty()) {
+                Log.w(TAG, "Fail-closed: corrupted salt or hash bytes")
+                return false
+            }
 
             val computedHash = deriveHash(enteredPin, salt)
 
             // Constant-time comparison to prevent timing side-channel attacks
             MessageDigest.isEqual(computedHash, storedHash)
         } catch (e: Exception) {
-            Log.e(TAG, "Error during cryptographic verification", e)
+            Log.e(TAG, "Fail-closed: Exception during cryptographic verification", e)
             false
         }
     }

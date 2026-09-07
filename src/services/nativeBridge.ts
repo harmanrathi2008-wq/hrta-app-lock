@@ -191,9 +191,10 @@ export class NativeBridgeService {
     if (this.isNative()) {
       try {
         const res = await HrtaAppLockPlugin.verifyMasterPin({ pin });
-        return !!res.success;
+        return !!res?.success;
       } catch (err) {
-        console.warn('[HRTA Native Bridge] verifyMasterPin failed, falling back to local verifier:', err);
+        console.error('[HRTA Native Bridge] Native verification failed - failing closed:', err);
+        return false; // Strict Fail-Closed
       }
     }
     const verifier = LocalStorageService.getPinVerifier();

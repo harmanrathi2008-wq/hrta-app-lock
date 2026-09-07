@@ -58,7 +58,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Dynamic HRTA Lock Shield Activity (Non-exported, singleInstance) -->
+        <!-- Dynamic HRTA Lock Shield Activity (Non-exported, singleInstance, dedicated task stack) -->
         <activity
             android:name=".ui.LockActivity"
             android:theme="@style/AppTheme.NoActionBar"
@@ -66,6 +66,9 @@
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:exported="false"
+            android:taskAffinity="com.harmanrathi.applock.lockoverlay"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateAlwaysHidden"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode" />
 
         <!-- Native Background Monitor Foreground Service -->

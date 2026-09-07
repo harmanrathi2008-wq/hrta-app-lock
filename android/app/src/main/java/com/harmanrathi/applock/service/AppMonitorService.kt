@@ -38,6 +38,8 @@ class AppMonitorService : Service() {
         private const val NOTIFICATION_ID = 8801
         private const val POLL_INTERVAL_MS = 250L
 
+        const val ACTION_UPDATE_STATUS = "com.harmanrathi.applock.ACTION_UPDATE_STATUS"
+
         @Volatile
         var isRunning: Boolean = false
             private set
@@ -63,6 +65,9 @@ class AppMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val prefs = getSharedPreferences("hrta_app_lock_prefs", Context.MODE_PRIVATE)
+        val isActive = prefs.getBoolean("protection_active", true)
+        updateNotification(isActive)
         // Sticky service: automatically recreate if killed by the OS
         return START_STICKY
     }
@@ -81,6 +86,42 @@ class AppMonitorService : Service() {
             manager?.createNotificationChannel(channel)
         }
 
+        val prefs = getSharedPreferences("hrta_app_lock_prefs", Context.MODE_PRIVATE)
+        val isActive = prefs.getBoolean("protection_active", true)
+
+        val openAppIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openAppIntent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+        )
+
+        val statusText = if (isActive) {
+            "Protection Active • Developed by Harman Rathi"
+        } else {
+            "Protection Paused • Tap to Resume"
+        }
+
+        val notification: Notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("HRTA SECURE SYSTEM")
+            .setContentText(statusText)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        startForeground(NOTIFICATION_ID, notification)
+    }
+
+    private fun updateNotification(isActive: Boolean) {
+        val statusText = if (isActive) {
+            "Protection Active • Developed by Harman Rathi"
+        } else {
+            "Protection Paused • Tap to Resume"
+        }
+
         val openAppIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -91,14 +132,15 @@ class AppMonitorService : Service() {
 
         val notification: Notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("HRTA SECURE SYSTEM")
-            .setContentText("Protection Active • Developed by Harman Rathi")
+            .setContentText(statusText)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        startForeground(NOTIFICATION_ID, notification)
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.notify(NOTIFICATION_ID, notification)
     }
 
     private fun registerScreenReceiver() {
@@ -172,6 +214,12 @@ class AppMonitorService : Service() {
     }
 
     private fun showLockScreen(packageName: String) {
+        // Enforce overlay permission check for Android 10+ background activity start restrictions
+        if (!PermissionHelper.hasOverlayPermission(this)) {
+            Log.w(TAG, "Overlay permission not granted. Cannot display LockActivity.")
+            return
+        }
+
         val appName = try {
             val pm = packageManager
             val info = pm.getApplicationInfo(packageName, 0)
