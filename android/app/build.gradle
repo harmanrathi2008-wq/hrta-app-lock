@@ -29,7 +29,6 @@ android {
                 keyPassword System.getenv("HRTA_KEY_PASSWORD") ?: "hrtasecure2026"
                 v1SigningEnabled true
                 v2SigningEnabled true
-                v3SigningEnabled true
             }
         }
     }
