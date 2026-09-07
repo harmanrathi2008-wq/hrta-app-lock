@@ -1,0 +1,41 @@
+﻿# HRTA Portal folder exclusion (separate repository)
+HRTA SYSTEM/
+
+# Node dependencies & caches
+node_modules/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# Production build artifacts
+dist/
+build/
+
+# Android build artifacts & SDK files
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/.idea/
+android/*.iml
+android/app/*.iml
+local.properties
+*.apk
+*.aab
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+
+# Environment / Secret files
+.env
+.env.local
+.env.*.local
+*.pem
+*.keystore
+*.jks
