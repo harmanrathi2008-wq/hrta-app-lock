@@ -26,6 +26,9 @@
     <!-- 7. Tactile haptic feedback for keypad -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- 8. Hardware Biometric Authentication for Local PIN Recovery -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
     <!-- Package Visibility Queries: allows querying installed user-launchable apps (Android 11+) -->
     <queries>
         <intent>
@@ -82,11 +85,12 @@
                 android:value="App Lock security monitor" />
         </service>
 
-        <!-- Boot & Upgrade Recovery Receiver -->
+        <!-- Boot & Upgrade Recovery Receiver (Protected by RECEIVE_BOOT_COMPLETED permission) -->
         <receiver
             android:name=".receiver.BootReceiver"
             android:enabled="true"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

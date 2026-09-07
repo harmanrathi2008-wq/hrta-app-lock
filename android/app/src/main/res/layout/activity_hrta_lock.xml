@@ -183,6 +183,20 @@
                 android:layout_margin="5dp" />
         </GridLayout>
 
+        <!-- Forgot PIN Recovery Trigger -->
+        <TextView
+            android:id="@+id/tv_forgot_pin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Forgot PIN?"
+            android:textColor="#00F0FF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:padding="8dp"
+            android:layout_marginTop="10dp"
+            android:clickable="true"
+            android:focusable="true" />
+
         <!-- Footer -->
         <TextView
             android:layout_width="wrap_content"

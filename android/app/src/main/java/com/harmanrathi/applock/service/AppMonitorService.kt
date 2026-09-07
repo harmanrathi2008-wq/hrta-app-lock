@@ -36,7 +36,8 @@ class AppMonitorService : Service() {
         private const val TAG = "HRTA_AppMonitorService"
         private const val NOTIFICATION_CHANNEL_ID = "hrta_lock_service_channel"
         private const val NOTIFICATION_ID = 8801
-        private const val POLL_INTERVAL_MS = 250L
+        private const val POLL_INTERVAL_MS = 500L
+        private const val USAGE_STATS_WINDOW_MS = 1500L
 
         const val ACTION_UPDATE_STATUS = "com.harmanrathi.applock.ACTION_UPDATE_STATUS"
 
@@ -158,13 +159,26 @@ class AppMonitorService : Service() {
     private fun registerScreenReceiver() {
         screenReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-                    Log.d(TAG, "Screen off: clearing temporary unlocked sessions")
-                    clearUnlockedSessions()
+                when (intent?.action) {
+                    Intent.ACTION_SCREEN_OFF -> {
+                        Log.d(TAG, "Screen off: clearing sessions and suspending monitoring loop")
+                        clearUnlockedSessions()
+                        stopMonitoringLoop()
+                    }
+                    Intent.ACTION_SCREEN_ON -> {
+                        val prefs = getSharedPreferences("hrta_app_lock_prefs", Context.MODE_PRIVATE)
+                        if (prefs.getBoolean("protection_active", true)) {
+                            Log.d(TAG, "Screen on: resuming monitoring loop")
+                            startMonitoringLoop()
+                        }
+                    }
                 }
             }
         }
-        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
         registerReceiver(screenReceiver, filter)
     }
 
@@ -235,7 +249,8 @@ class AppMonitorService : Service() {
     }
 
     private fun showLockScreen(packageName: String) {
-        // Enforce overlay permission check for Android 10+ background activity start restrictions
+        // Background Activity Launching on Android 10+ relies on SYSTEM_ALERT_WINDOW (overlay) authority.
+        // Physical device testing on Samsung One UI and target OEMs is required to verify overlay readiness.
         if (!PermissionHelper.hasOverlayPermission(this)) {
             Log.w(TAG, "Overlay permission not granted. Cannot display LockActivity.")
             return
@@ -256,7 +271,7 @@ class AppMonitorService : Service() {
     private fun getTopPackageName(): String? {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return null
         val time = System.currentTimeMillis()
-        val usageEvents = usm.queryEvents(time - 1000 * 5, time)
+        val usageEvents = usm.queryEvents(time - USAGE_STATS_WINDOW_MS, time)
         val event = UsageEvents.Event()
 
         var lastEventPackage: String? = null

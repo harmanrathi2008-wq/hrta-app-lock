@@ -23,6 +23,7 @@ export const App: React.FC = () => {
     pkg: 'com.google.android.youtube',
   });
   const [isStandaloneLock, setIsStandaloneLock] = useState<boolean>(false);
+  const [isRecoveryReset, setIsRecoveryReset] = useState<boolean>(false);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -43,6 +44,14 @@ export const App: React.FC = () => {
         return;
       }
 
+      // Check if recovery reset was requested via URL params
+      if (params.get('mode') === 'recovery') {
+        setIsRecoveryReset(true);
+        setCurrentScreen('ONBOARDING_PIN');
+        setIsLoading(false);
+        return;
+      }
+
       // If running on web browser/domain (non-native), enforce Web Landing & 403 Gate
       if (!Capacitor.isNativePlatform() && previewMode !== 'app') {
         const path = window.location.pathname;
@@ -55,8 +64,8 @@ export const App: React.FC = () => {
         return;
       }
 
-      // Native Android Environment: check onboarding & PIN status
-      const pinConfigured = LocalStorageService.isPinSet();
+      // Native Android Environment: check onboarding & PIN status from authoritative native store
+      const pinConfigured = await NativeBridgeService.isPinConfigured();
       const onboardingCompleted = LocalStorageService.isOnboardingCompleted();
 
       if (!pinConfigured) {
@@ -75,7 +84,17 @@ export const App: React.FC = () => {
       setIsLoading(false);
     };
 
+    const handleRecoveryEvent = () => {
+      setIsRecoveryReset(true);
+      setCurrentScreen('ONBOARDING_PIN');
+    };
+    window.addEventListener('hrta:recovery_reset', handleRecoveryEvent);
+
     initializeApp();
+
+    return () => {
+      window.removeEventListener('hrta:recovery_reset', handleRecoveryEvent);
+    };
   }, []);
 
   if (isLoading) {
@@ -120,19 +139,24 @@ export const App: React.FC = () => {
     return <WelcomeScreen onStart={() => setCurrentScreen('ONBOARDING_PIN')} />;
   }
 
-  // 2. Onboarding / Change PIN
+  // 2. Onboarding / Change PIN / Recovery Reset
   if (currentScreen === 'ONBOARDING_PIN' || currentScreen === 'CHANGE_PIN') {
     return (
       <PinCreationScreen
         isChangePinMode={currentScreen === 'CHANGE_PIN'}
+        isRecoveryReset={isRecoveryReset}
         onPinCreated={() => {
-          if (currentScreen === 'CHANGE_PIN') {
+          setIsRecoveryReset(false);
+          if (currentScreen === 'CHANGE_PIN' || isRecoveryReset) {
             setCurrentScreen('DASHBOARD');
           } else {
             setCurrentScreen('ONBOARDING_PERMISSIONS');
           }
         }}
-        onCancel={currentScreen === 'CHANGE_PIN' ? () => setCurrentScreen('DASHBOARD') : undefined}
+        onCancel={() => {
+          setIsRecoveryReset(false);
+          setCurrentScreen('DASHBOARD');
+        }}
       />
     );
   }
@@ -184,6 +208,10 @@ export const App: React.FC = () => {
         }}
         onEmergencyExit={() => {
           setCurrentScreen('DASHBOARD');
+        }}
+        onForgotPin={() => {
+          setIsRecoveryReset(true);
+          setCurrentScreen('ONBOARDING_PIN');
         }}
       />
     );

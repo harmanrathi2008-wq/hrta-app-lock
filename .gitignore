@@ -24,8 +24,9 @@ android/*.iml
 android/app/*.iml
 local.properties
 *.apk
-!public/downloads/*.apk
 *.aab
+public/downloads/*.apk
+dist/downloads/*.apk
 
 # OS files
 .DS_Store

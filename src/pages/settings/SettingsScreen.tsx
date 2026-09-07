@@ -14,6 +14,7 @@ interface SettingsScreenProps {
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onResetApp }) => {
   const [config, setConfig] = useState(LocalStorageService.getLockConfig());
   const [showConfirmReset, setShowConfirmReset] = useState<boolean>(false);
+  const [resetPinInput, setResetPinInput] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isResetting, setIsResetting] = useState<boolean>(false);
 
@@ -159,33 +160,44 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onResetA
           </p>
 
           {showConfirmReset ? (
-            <div className="space-y-2 pt-1">
+            <div className="space-y-3 pt-1">
               <p className="text-xs text-[#EF4444] font-mono font-bold">
-                Are you sure? This will remove your PIN and reset all configuration.
+                Authentication Required: Enter your Master PIN to authorize factory reset.
               </p>
+              <input
+                type="password"
+                maxLength={6}
+                placeholder="Enter Master PIN"
+                value={resetPinInput}
+                onChange={e => setResetPinInput(e.target.value.replace(/[^0-9]/g, ''))}
+                className="w-full px-3 py-2 rounded-xl bg-[#070A10] border border-[#1F2B3E] text-white font-mono text-center tracking-widest text-sm focus:outline-none focus:border-[#EF4444]"
+              />
               <div className="flex space-x-2">
                 <button
                   type="button"
-                  disabled={isResetting}
+                  disabled={isResetting || !resetPinInput}
                   onClick={async () => {
                     setIsResetting(true);
                     setErrorMessage('');
-                    const success = await NativeBridgeService.resetAllData();
+                    const success = await NativeBridgeService.resetAllData(resetPinInput);
                     setIsResetting(false);
                     if (success) {
                       onResetApp();
                     } else {
-                      setErrorMessage('Failed to reset native security data. Please try again.');
-                      setShowConfirmReset(false);
+                      setErrorMessage('Reset failed: Invalid Master PIN.');
+                      setResetPinInput('');
                     }
                   }}
                   className="flex-1 py-2 rounded-xl bg-[#EF4444] text-white text-xs font-mono font-bold active:scale-95 transition-all disabled:opacity-50"
                 >
-                  {isResetting ? 'Resetting...' : 'Yes, Reset Now'}
+                  {isResetting ? 'Resetting...' : 'Authorize Reset'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowConfirmReset(false)}
+                  onClick={() => {
+                    setShowConfirmReset(false);
+                    setResetPinInput('');
+                  }}
                   className="flex-1 py-2 rounded-xl bg-[#1E293B] text-[#94A3B8] text-xs font-mono font-bold active:scale-95 transition-all"
                 >
                   Cancel

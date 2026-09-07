@@ -8,8 +8,9 @@
 -keep class com.harmanrathi.applock.ui.** { *; }
 -keep class com.harmanrathi.applock.util.** { *; }
 
-# Keep Android Security Crypto
+# Keep Android Security Crypto & Biometrics
 -keep class androidx.security.crypto.** { *; }
+-keep class androidx.biometric.** { *; }
 
 # Obfuscate internal implementation while preserving security methods
 -repackageclasses

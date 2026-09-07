@@ -99,6 +99,34 @@ class CryptoManagerTest {
     }
 
     @Test
+    fun testRecoveryKeyNormalization() {
+        val rawKey = "HRTA-7F92-44A1-B892-K9Q2"
+        val normalized = CryptoManager.normalizeRecoveryKey(rawKey)
+        assertEquals("7F9244A1B892K9Q2", normalized)
+        assertEquals("Normalized key must have 16 characters (80 bits)", 16, normalized.length)
+
+        // Test with spaces and lowercase
+        val dirtyKey = "  hrta-7f92-44a1-b892-k9q2  "
+        val clean = CryptoManager.normalizeRecoveryKey(dirtyKey)
+        assertEquals("7F9244A1B892K9Q2", clean)
+    }
+
+    @Test
+    fun testNativeRecoveryAuthorizationLifecycle() {
+        // Initially unauthorized
+        CryptoManager.invalidateRecoveryAuthorization()
+        assertFalse("Should be unauthorized initially", CryptoManager.isRecoveryAuthorized())
+
+        // Grant authorization
+        CryptoManager.authorizeRecovery(CryptoManager.RecoveryMethod.BIOMETRIC)
+        assertTrue("Should be authorized after grant", CryptoManager.isRecoveryAuthorized())
+
+        // Invalidate authorization
+        CryptoManager.invalidateRecoveryAuthorization()
+        assertFalse("Should be unauthorized after invalidation", CryptoManager.isRecoveryAuthorized())
+    }
+
+    @Test
     fun testRelockBehaviorValues() {
         val validBehaviors = listOf("IMMEDIATELY", "SCREEN_OFF", "TIMEOUT_1_MIN", "TIMEOUT_5_MIN")
         assertTrue(validBehaviors.contains("IMMEDIATELY"))

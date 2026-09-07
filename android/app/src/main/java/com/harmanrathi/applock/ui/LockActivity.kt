@@ -1,6 +1,6 @@
 package com.harmanrathi.applock.ui
 
-import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -12,13 +12,19 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import com.harmanrathi.applock.MainActivity
 import com.harmanrathi.applock.R
 import com.harmanrathi.applock.crypto.CryptoManager
 import com.harmanrathi.applock.service.AppMonitorService
 
-class LockActivity : Activity() {
+class LockActivity : FragmentActivity() {
 
     private var targetPackage: String = ""
     private var targetAppName: String = "Application"
@@ -62,7 +68,8 @@ class LockActivity : Activity() {
             @Suppress("DEPRECATION")
             window.addFlags(
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
             )
         }
 
@@ -100,6 +107,10 @@ class LockActivity : Activity() {
 
         setupKeypad()
         renderPinDots()
+
+        findViewById<TextView>(R.id.tv_forgot_pin)?.setOnClickListener {
+            handleForgotPin()
+        }
     }
 
     private fun setupKeypad() {
@@ -207,6 +218,108 @@ class LockActivity : Activity() {
         }
     }
 
+    // ==========================================
+    // 100% LOCAL-FIRST RECOVERY FLOWS
+    // ==========================================
+
+    private fun handleForgotPin() {
+        val bm = BiometricManager.from(this)
+        val canAuth = bm.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
+
+        if (canAuth == BiometricManager.BIOMETRIC_SUCCESS) {
+            val options = arrayOf("Use Biometrics (Fingerprint/Face)", "Enter Emergency Recovery Key")
+            AlertDialog.Builder(this)
+                .setTitle("Recover Master Access")
+                .setItems(options) { _, which ->
+                    if (which == 0) {
+                        launchBiometricPrompt()
+                    } else {
+                        showRecoveryKeyDialog()
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        } else {
+            showRecoveryKeyDialog()
+        }
+    }
+
+    private fun launchBiometricPrompt() {
+        val executor = ContextCompat.getMainExecutor(this)
+        val prompt = BiometricPrompt(this, executor, object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                super.onAuthenticationSucceeded(result)
+                // Authorize recovery in native memory (60s TTL)
+                CryptoManager.authorizeRecovery(CryptoManager.RecoveryMethod.BIOMETRIC)
+
+                val intent = Intent(this@LockActivity, MainActivity::class.java).apply {
+                    action = "com.harmanrathi.applock.ACTION_RECOVERY_RESET"
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                startActivity(intent)
+                finish()
+            }
+
+            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                super.onAuthenticationError(errorCode, errString)
+                if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                    errorText.text = errString.toString()
+                    errorText.visibility = View.VISIBLE
+                }
+            }
+        })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("HRTA SECURE SYSTEM")
+            .setSubtitle("Authenticate to Authorize Master PIN Reset")
+            .setNegativeButtonText("Cancel")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
+            .build()
+
+        prompt.authenticate(promptInfo)
+    }
+
+    private fun showRecoveryKeyDialog() {
+        val remainingCooldown = CryptoManager.getRemainingRecoveryLockoutSeconds(this)
+        if (remainingCooldown > 0) {
+            errorText.text = "Recovery locked for ${remainingCooldown}s."
+            errorText.visibility = View.VISIBLE
+            return
+        }
+
+        val input = EditText(this).apply {
+            hint = "HRTA-XXXX-XXXX-XXXX-XXXX"
+            transformationMethod = android.text.method.SingleLineTransformationMethod()
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Emergency Recovery Key")
+            .setMessage("Enter the 16-character recovery key generated during setup:")
+            .setView(input)
+            .setPositiveButton("Verify") { _, _ ->
+                val entered = input.text.toString().trim()
+                val isValid = CryptoManager.verifyRecoveryKey(this, entered)
+                if (isValid) {
+                    val intent = Intent(this@LockActivity, MainActivity::class.java).apply {
+                        action = "com.harmanrathi.applock.ACTION_RECOVERY_RESET"
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    startActivity(intent)
+                    finish()
+                } else {
+                    val cooldown = CryptoManager.getRemainingRecoveryLockoutSeconds(this)
+                    if (cooldown > 0) {
+                        errorText.text = "Too many failed recovery attempts. Locked for ${cooldown}s."
+                    } else {
+                        errorText.text = "Invalid Recovery Key. Access Denied."
+                    }
+                    errorText.visibility = View.VISIBLE
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun renderPinDots() {
         pinDotsContainer.removeAllViews()
         val currentCount = enteredPin.length
@@ -236,28 +349,19 @@ class LockActivity : Activity() {
     }
 
     override fun onBackPressed() {
-        // Pressing back on lock screen exits to Android Home launcher rather than granting access
         exitToHome()
     }
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        // If user triggers Home or Recents gesture while locked, bounce to Home launcher
         if (!isUnlocked) {
             exitToHome()
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        if (!isUnlocked) {
-            finish()
-        }
-    }
-
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            onBackPressed()
+        if (keyCode == KeyEvent.KEYCODE_APP_SWITCH) {
+            exitToHome()
             return true
         }
         return super.onKeyDown(keyCode, event)

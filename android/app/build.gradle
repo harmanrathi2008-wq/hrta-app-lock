@@ -21,11 +21,12 @@ android {
         release {
             if (file("hrta-release.keystore").exists()) {
                 storeFile file("hrta-release.keystore")
-                storePassword System.getenv("HRTA_KEYSTORE_PASSWORD") ?: "hrtasecure2026"
-                keyAlias System.getenv("HRTA_KEY_ALIAS") ?: "hrtakey"
-                keyPassword System.getenv("HRTA_KEY_PASSWORD") ?: "hrtasecure2026"
+                storePassword System.getenv("HRTA_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("HRTA_KEY_ALIAS")
+                keyPassword System.getenv("HRTA_KEY_PASSWORD")
                 v1SigningEnabled true
                 v2SigningEnabled true
+                v3SigningEnabled true
             }
         }
     }
@@ -34,7 +35,8 @@ android {
             if (file("hrta-release.keystore").exists()) {
                 signingConfig signingConfigs.release
             }
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -49,6 +51,7 @@ repositories {
 dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation 'androidx.biometric:biometric:1.1.0'
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
