@@ -378,7 +378,9 @@ object CryptoManager {
             recoveryAuthExpiry = System.currentTimeMillis() + 60000L // 60s TTL
             activeRecoveryMethod = method
         }
-        Log.i(TAG, "Recovery authorization granted natively (60s TTL)")
+        try {
+            Log.i(TAG, "Recovery authorization granted natively (60s TTL)")
+        } catch (ignored: Throwable) {}
     }
 
     fun isRecoveryAuthorized(): Boolean {

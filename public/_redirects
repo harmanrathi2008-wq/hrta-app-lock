@@ -1,0 +1,3 @@
+# Direct APK download redirection to official signed GitHub Release
+/downloads/hrta-app-lock.apk https://github.com/harmanrathi2008-wq/hrta-app-lock/releases/download/v1.0.0/hrta-app-lock.apk 302
+/downloads/* https://github.com/harmanrathi2008-wq/hrta-app-lock/releases/download/v1.0.0/hrta-app-lock.apk 302

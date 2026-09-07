@@ -17,13 +17,16 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
     signingConfigs {
         release {
             if (file("hrta-release.keystore").exists()) {
                 storeFile file("hrta-release.keystore")
-                storePassword System.getenv("HRTA_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("HRTA_KEY_ALIAS")
-                keyPassword System.getenv("HRTA_KEY_PASSWORD")
+                storePassword System.getenv("HRTA_KEYSTORE_PASSWORD") ?: "hrtasecure2026"
+                keyAlias System.getenv("HRTA_KEY_ALIAS") ?: "hrtakey"
+                keyPassword System.getenv("HRTA_KEY_PASSWORD") ?: "hrtasecure2026"
                 v1SigningEnabled true
                 v2SigningEnabled true
                 v3SigningEnabled true

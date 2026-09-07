@@ -10,7 +10,7 @@ export const WebLandingPage: React.FC<WebLandingPageProps> = ({ onBlockedAccess 
   const [downloading, setDownloading] = useState<boolean>(false);
   const [downloadStarted, setDownloadStarted] = useState<boolean>(false);
 
-  const domainDownloadUrl = '/downloads/hrta-app-lock.apk';
+  const domainDownloadUrl = 'https://github.com/harmanrathi2008-wq/hrta-app-lock/releases/download/v1.0.0/hrta-app-lock.apk';
 
   const handleDownload = () => {
     setDownloading(true);

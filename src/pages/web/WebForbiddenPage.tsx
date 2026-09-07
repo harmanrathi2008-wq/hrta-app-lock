@@ -9,7 +9,7 @@ interface WebForbiddenPageProps {
 export const WebForbiddenPage: React.FC<WebForbiddenPageProps> = ({ onBackToLanding }) => {
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = '/downloads/hrta-app-lock.apk';
+    link.href = 'https://github.com/harmanrathi2008-wq/hrta-app-lock/releases/download/v1.0.0/hrta-app-lock.apk';
     link.setAttribute('download', 'hrta-app-lock.apk');
     document.body.appendChild(link);
     link.click();
