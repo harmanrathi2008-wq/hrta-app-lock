@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">HRTA App Lock</string>
+    <string name="title_activity_main">HRTA App Lock</string>
+    <string name="package_name">com.harmanrathi.applock</string>
+    <string name="custom_url_scheme">com.harmanrathi.applock</string>
+</resources>

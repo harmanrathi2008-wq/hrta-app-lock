@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#070A10"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="20dp">
+
+        <!-- Top Header -->
+        <ImageView
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:src="@mipmap/ic_launcher"
+            android:layout_marginTop="16dp"
+            android:contentDescription="HRTA Logo" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HRTA SECURE SYSTEM"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.15"
+            android:layout_marginTop="8dp" />
+
+        <View
+            android:layout_width="120dp"
+            android:layout_height="1dp"
+            android:background="#3300F0FF"
+            android:layout_marginTop="6dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HARMAN RATHI TESTING AGENCY"
+            android:textColor="#94A3B8"
+            android:textSize="9sp"
+            android:layout_marginTop="4dp" />
+
+        <!-- 403 Forbidden Banner -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔴 403 FORBIDDEN"
+                android:textColor="#EF4444"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ACCESS DENIED"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="UNTIL CORRECT PIN ENTERED"
+                android:textColor="#94A3B8"
+                android:textSize="10sp"
+                android:layout_marginTop="1dp" />
+        </LinearLayout>
+
+        <!-- Target App Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/card_bg"
+            android:padding="12dp"
+            android:layout_marginTop="16dp">
+
+            <TextView
+                android:id="@+id/tv_target_app_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="YouTube"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SECURED BY HRTA SYSTEM"
+                android:textColor="#00F0FF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
+
+            <TextView
+                android:id="@+id/tv_target_package"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="com.google.android.youtube"
+                android:textColor="#64748B"
+                android:textSize="9sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- PIN Dots Container -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ENTER YOUR PIN"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:id="@+id/layout_pin_dots"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/tv_error_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#EF4444"
+            android:textSize="11sp"
+            android:visibility="gone"
+            android:layout_marginTop="6dp" />
+
+        <!-- Keypad Grid -->
+        <GridLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:columnCount="3"
+            android:rowCount="4"
+            android:layout_marginTop="16dp">
+
+            <Button android:id="@+id/btn_num_1" android:text="1" style="@style/KeypadButtonStyle" />
+            <Button android:id="@+id/btn_num_2" android:text="2" style="@style/KeypadButtonStyle" />
+            <Button android:id="@+id/btn_num_3" android:text="3" style="@style/KeypadButtonStyle" />
+
+            <Button android:id="@+id/btn_num_4" android:text="4" style="@style/KeypadButtonStyle" />
+            <Button android:id="@+id/btn_num_5" android:text="5" style="@style/KeypadButtonStyle" />
+            <Button android:id="@+id/btn_num_6" android:text="6" style="@style/KeypadButtonStyle" />
+
+            <Button android:id="@+id/btn_num_7" android:text="7" style="@style/KeypadButtonStyle" />
+            <Button android:id="@+id/btn_num_8" android:text="8" style="@style/KeypadButtonStyle" />
+            <Button android:id="@+id/btn_num_9" android:text="9" style="@style/KeypadButtonStyle" />
+
+            <ImageButton
+                android:id="@+id/btn_backspace"
+                android:layout_width="72dp"
+                android:layout_height="56dp"
+                android:layout_margin="5dp"
+                android:background="@drawable/keypad_btn_bg"
+                android:src="@android:drawable/ic_input_delete"
+                android:contentDescription="Backspace" />
+
+            <Button android:id="@+id/btn_num_0" android:text="0" style="@style/KeypadButtonStyle" />
+
+            <View
+                android:layout_width="72dp"
+                android:layout_height="56dp"
+                android:layout_margin="5dp" />
+        </GridLayout>
+
+        <!-- Footer -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SYSTEM STATUS: PROTECTED"
+            android:textColor="#10B981"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DEVELOPED BY HARMAN RATHI"
+            android:textColor="#94A3B8"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="16dp" />
+
+    </LinearLayout>
+</ScrollView>
