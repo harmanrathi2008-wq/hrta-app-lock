@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- HRTA SECURE SYSTEM Color Palette -->
+    <color name="colorPrimary">#00F0FF</color>
+    <color name="colorPrimaryDark">#070A10</color>
+    <color name="colorAccent">#0066FF</color>
+    <color name="backgroundColor">#070A10</color>
+    <color name="cardBackground">#0D131F</color>
+    <color name="textColorPrimary">#FFFFFF</color>
+    <color name="textColorSecondary">#94A3B8</color>
+    <color name="colorDanger">#EF4444</color>
+</resources>

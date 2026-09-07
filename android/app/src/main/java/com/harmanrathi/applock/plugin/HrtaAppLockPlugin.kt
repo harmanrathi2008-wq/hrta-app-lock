@@ -14,7 +14,6 @@ import com.harmanrathi.applock.crypto.CryptoManager
 import com.harmanrathi.applock.service.AppMonitorService
 import com.harmanrathi.applock.util.AppListHelper
 import com.harmanrathi.applock.util.PermissionHelper
-import org.json.JSONArray
 
 @CapacitorPlugin(name = "HrtaAppLock")
 class HrtaAppLockPlugin : Plugin() {
@@ -120,6 +119,15 @@ class HrtaAppLockPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun getPinLength(call: PluginCall) {
+        val length = CryptoManager.getStoredPinLength(context)
+        val ret = JSObject().apply {
+            put("pinLength", length)
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
     fun verifyMasterPin(call: PluginCall) {
         val pin = call.getString("pin") ?: ""
         val success = CryptoManager.verifyPin(context, pin)
@@ -127,6 +135,57 @@ class HrtaAppLockPlugin : Plugin() {
             put("success", success)
         }
         call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun saveLockConfig(call: PluginCall) {
+        val protectionActive = call.getBoolean("protectionActive") ?: true
+        val relockBehavior = call.getString("relockBehavior") ?: "TIMEOUT_1_MIN"
+        val hapticsEnabled = call.getBoolean("hapticsEnabled") ?: true
+        val stealthMode = call.getBoolean("stealthMode") ?: false
+
+        getPrefs().edit()
+            .putBoolean("protection_active", protectionActive)
+            .putString("relock_behavior", relockBehavior)
+            .putBoolean("haptics_enabled", hapticsEnabled)
+            .putBoolean("stealth_mode", stealthMode)
+            .apply()
+
+        call.resolve(JSObject().apply { put("success", true) })
+    }
+
+    @PluginMethod
+    fun getLockConfig(call: PluginCall) {
+        val prefs = getPrefs()
+        val ret = JSObject().apply {
+            put("protectionActive", prefs.getBoolean("protection_active", true))
+            put("relockBehavior", prefs.getString("relock_behavior", "TIMEOUT_1_MIN"))
+            put("hapticsEnabled", prefs.getBoolean("haptics_enabled", true))
+            put("stealthMode", prefs.getBoolean("stealth_mode", false))
+        }
+        call.resolve(ret)
+    }
+
+    @PluginMethod
+    fun resetAllData(call: PluginCall) {
+        try {
+            // 1. Clear cryptographic PIN from secure hardware store
+            CryptoManager.clearPin(context)
+            // 2. Clear native preferences & protected package list
+            getPrefs().edit().clear().apply()
+            // 3. Stop background monitor service
+            val intent = Intent(context, AppMonitorService::class.java)
+            context.stopService(intent)
+            // 4. Clear unlocked session cache
+            AppMonitorService.clearUnlockedSessions()
+
+            call.resolve(JSObject().apply { put("success", true) })
+        } catch (e: Exception) {
+            call.resolve(JSObject().apply {
+                put("success", false)
+                put("error", e.message)
+            })
+        }
     }
 
     @PluginMethod
@@ -156,7 +215,7 @@ class HrtaAppLockPlugin : Plugin() {
     @PluginMethod
     fun isServiceRunning(call: PluginCall) {
         val ret = JSObject().apply {
-            put("running", true)
+            put("running", AppMonitorService.isRunning)
         }
         call.resolve(ret)
     }

@@ -1,5 +1,5 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
-import { AppInfo, PermissionStatus } from '../types';
+import { AppInfo, PermissionStatus, LockConfig } from '../types';
 import { LocalStorageService, DEFAULT_MOCK_APPS } from './storage';
 import { createPinVerifier, verifyPin } from './crypto';
 
@@ -13,7 +13,11 @@ export interface HrtaAppLockPluginInterface {
   saveProtectedApps(options: { packages: string[] }): Promise<void>;
   isPinConfigured(): Promise<{ configured: boolean }>;
   setMasterPin(options: { pin: string }): Promise<{ success: boolean }>;
+  getPinLength(): Promise<{ pinLength: number }>;
   verifyMasterPin(options: { pin: string }): Promise<{ success: boolean }>;
+  saveLockConfig(options: Partial<LockConfig>): Promise<{ success: boolean }>;
+  getLockConfig(): Promise<Partial<LockConfig>>;
+  resetAllData(): Promise<{ success: boolean; error?: string }>;
   startMonitoringService(): Promise<{ success: boolean }>;
   stopMonitoringService(): Promise<{ success: boolean }>;
   isServiceRunning(): Promise<{ running: boolean }>;
@@ -58,7 +62,6 @@ export class NativeBridgeService {
         console.warn('[HRTA Native Bridge] openUsageSettings failed:', err);
       }
     }
-    // Simulate user toggling permission in web preview
     this.mockPermissions.usageAccess = true;
   }
 
@@ -71,7 +74,6 @@ export class NativeBridgeService {
         console.warn('[HRTA Native Bridge] openOverlaySettings failed:', err);
       }
     }
-    // Simulate user toggling permission in web preview
     this.mockPermissions.overlay = true;
   }
 
@@ -99,7 +101,7 @@ export class NativeBridgeService {
           }));
         }
       } catch (err) {
-        console.warn('[HRTA Native Bridge] getInstalledApps failed, using local list:', err);
+        console.warn('[HRTA Native Bridge] getInstalledApps failed, returning mock apps:', err);
       }
     }
     const protectedPkgs = new Set(LocalStorageService.getProtectedPackages());
@@ -125,6 +127,7 @@ export class NativeBridgeService {
 
   static async saveProtectedApps(packages: string[]): Promise<void> {
     LocalStorageService.saveProtectedPackages(packages);
+
     if (this.isNative()) {
       try {
         await HrtaAppLockPlugin.saveProtectedApps({ packages });
@@ -147,19 +150,41 @@ export class NativeBridgeService {
   }
 
   static async setMasterPin(pin: string): Promise<boolean> {
-    // Generate secure PBKDF2 verifier
-    const verifier = await createPinVerifier(pin);
-    LocalStorageService.savePinVerifier(verifier);
-
     if (this.isNative()) {
       try {
         const res = await HrtaAppLockPlugin.setMasterPin({ pin });
-        return !!res.success;
+        if (!res || !res.success) {
+          console.error('[HRTA Native Bridge] Native setMasterPin reported failure');
+          return false;
+        }
       } catch (err) {
-        console.warn('[HRTA Native Bridge] setMasterPin failed:', err);
+        console.error('[HRTA Native Bridge] Native setMasterPin threw error:', err);
+        return false;
       }
     }
-    return true;
+
+    // Only save verifier locally once native hardware setup succeeds
+    try {
+      const verifier = await createPinVerifier(pin);
+      LocalStorageService.savePinVerifier(verifier);
+      return true;
+    } catch (e) {
+      console.error('[HRTA Native Bridge] Local verifier creation failed:', e);
+      return false;
+    }
+  }
+
+  static async getPinLength(): Promise<number> {
+    if (this.isNative()) {
+      try {
+        const res = await HrtaAppLockPlugin.getPinLength();
+        if (res && res.pinLength) return res.pinLength;
+      } catch (err) {
+        console.warn('[HRTA Native Bridge] getPinLength failed:', err);
+      }
+    }
+    const verifier = LocalStorageService.getPinVerifier();
+    return verifier?.pinLength || 4;
   }
 
   static async verifyMasterPin(pin: string): Promise<boolean> {
@@ -173,6 +198,33 @@ export class NativeBridgeService {
     }
     const verifier = LocalStorageService.getPinVerifier();
     return verifyPin(pin, verifier);
+  }
+
+  static async saveLockConfig(config: LockConfig): Promise<boolean> {
+    LocalStorageService.saveLockConfig(config);
+    if (this.isNative()) {
+      try {
+        const res = await HrtaAppLockPlugin.saveLockConfig(config);
+        return !!res.success;
+      } catch (err) {
+        console.warn('[HRTA Native Bridge] saveLockConfig failed:', err);
+      }
+    }
+    return true;
+  }
+
+  static async resetAllData(): Promise<boolean> {
+    LocalStorageService.resetAll();
+    if (this.isNative()) {
+      try {
+        const res = await HrtaAppLockPlugin.resetAllData();
+        return !!res.success;
+      } catch (err) {
+        console.error('[HRTA Native Bridge] resetAllData failed:', err);
+        return false;
+      }
+    }
+    return true;
   }
 
   static async startMonitoringService(): Promise<boolean> {

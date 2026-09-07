@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Lock, Smartphone, ShieldAlert, Check } from 'lucide-react';
+import { Download, Lock, Smartphone, ShieldAlert, Check, ExternalLink } from 'lucide-react';
 import { Footer } from '../../components/common/Footer';
 
 interface WebLandingPageProps {
@@ -8,23 +8,27 @@ interface WebLandingPageProps {
 
 export const WebLandingPage: React.FC<WebLandingPageProps> = ({ onBlockedAccess }) => {
   const [downloading, setDownloading] = useState<boolean>(false);
-  const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
+  const [downloadStarted, setDownloadStarted] = useState<boolean>(false);
+
+  const releaseDownloadUrl = 'https://github.com/harmanrathi2008-wq/hrta-app-lock/releases/download/v1.0.0/hrta-app-lock.apk';
+  const releasesPageUrl = 'https://github.com/harmanrathi2008-wq/hrta-app-lock/releases';
 
   const handleDownload = () => {
     setDownloading(true);
-    // Direct GitHub release or bundled APK link
-    const downloadUrl = 'https://github.com/harmanrathi2008-wq/hrta-app-lock/releases/latest/download/hrta-app-lock.apk';
+    setDownloadStarted(true);
+
     const link = document.createElement('a');
-    link.href = downloadUrl;
+    link.href = releaseDownloadUrl;
     link.setAttribute('download', 'hrta-app-lock.apk');
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     setTimeout(() => {
       setDownloading(false);
-      setDownloadSuccess(true);
-    }, 2000);
+    }, 1200);
   };
 
   return (
@@ -58,15 +62,20 @@ export const WebLandingPage: React.FC<WebLandingPageProps> = ({ onBlockedAccess 
             disabled={downloading}
             className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#00F0FF] via-[#00D8E6] to-[#00A3FF] hover:opacity-95 active:scale-[0.98] text-[#070A10] font-mono font-black text-sm tracking-wider uppercase shadow-glow-cyan transition-all flex items-center justify-center space-x-2.5 cursor-pointer disabled:opacity-75"
           >
-            {downloadSuccess ? (
+            {downloading ? (
+              <>
+                <Download className="w-5 h-5 text-[#070A10] animate-bounce" />
+                <span>Starting Download...</span>
+              </>
+            ) : downloadStarted ? (
               <>
                 <Check className="w-5 h-5 text-[#070A10]" />
-                <span>APK Downloaded</span>
+                <span>Download Again (APK)</span>
               </>
             ) : (
               <>
                 <Download className="w-5 h-5 text-[#070A10] animate-bounce" />
-                <span>{downloading ? 'Starting Download...' : 'Download HRTA App (APK)'}</span>
+                <span>Download HRTA App (APK)</span>
               </>
             )}
           </button>
@@ -78,6 +87,28 @@ export const WebLandingPage: React.FC<WebLandingPageProps> = ({ onBlockedAccess 
             <span>•</span>
             <span>100% Offline</span>
           </div>
+
+          {downloadStarted && (
+            <div className="p-3 rounded-xl bg-[#0D131F] border border-[#1F2B3E] text-left text-[11px] text-slate-400 space-y-1">
+              <div className="text-white font-bold flex items-center space-x-1.5">
+                <Check className="w-3.5 h-3.5 text-[#00F0FF]" />
+                <span>Download Request Triggered</span>
+              </div>
+              <p>
+                If your browser blocked the download,{' '}
+                <a
+                  href={releasesPageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#00F0FF] hover:underline inline-flex items-center space-x-1 font-bold"
+                >
+                  <span>open GitHub Releases</span>
+                  <ExternalLink className="w-3 h-3 ml-0.5" />
+                </a>{' '}
+                to download `hrta-app-lock.apk` directly.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Core Security Features */}

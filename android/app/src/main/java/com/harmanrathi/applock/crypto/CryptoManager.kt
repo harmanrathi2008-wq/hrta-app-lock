@@ -16,7 +16,7 @@ import javax.crypto.spec.PBEKeySpec
  *
  * Implements PBKDF2-HMAC-SHA256 password derivation with 100,000 iterations
  * and 128-bit cryptographically secure random salt.
- * Uses Android Keystore-backed EncryptedSharedPreferences where available.
+ * Uses Android Keystore-backed EncryptedSharedPreferences.
  */
 object CryptoManager {
     private const val TAG = "HRTA_CryptoManager"
@@ -29,6 +29,12 @@ object CryptoManager {
     private const val KEY_SALT = "enc_pin_salt_hex"
     private const val KEY_HASH = "enc_pin_hash_hex"
     private const val KEY_PIN_LENGTH = "pin_length"
+
+    // Persistent attempt tracking & lockout protection
+    private const val KEY_FAILED_ATTEMPTS = "failed_attempts_count"
+    private const val KEY_LOCKOUT_TIMESTAMP = "lockout_start_time"
+    const val MAX_ATTEMPTS = 5
+    const val LOCKOUT_DURATION_MS = 30000L // 30 seconds cooldown
 
     private fun getSecurePreferences(context: Context): SharedPreferences {
         return try {
@@ -76,12 +82,53 @@ object CryptoManager {
                 .putString(KEY_SALT, bytesToHex(salt))
                 .putString(KEY_HASH, bytesToHex(hash))
                 .putInt(KEY_PIN_LENGTH, pin.length)
+                .remove(KEY_FAILED_ATTEMPTS)
+                .remove(KEY_LOCKOUT_TIMESTAMP)
                 .apply()
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error storing cryptographic verifier", e)
             false
         }
+    }
+
+    fun getStoredPinLength(context: Context): Int {
+        val prefs = getSecurePreferences(context)
+        return prefs.getInt(KEY_PIN_LENGTH, 4)
+    }
+
+    fun getRemainingLockoutSeconds(context: Context): Long {
+        val prefs = getSecurePreferences(context)
+        val lockoutTimestamp = prefs.getLong(KEY_LOCKOUT_TIMESTAMP, 0L)
+        if (lockoutTimestamp == 0L) return 0L
+        val elapsed = System.currentTimeMillis() - lockoutTimestamp
+        return if (elapsed < LOCKOUT_DURATION_MS) {
+            (LOCKOUT_DURATION_MS - elapsed) / 1000L + 1L
+        } else {
+            0L
+        }
+    }
+
+    fun getFailedAttempts(context: Context): Int {
+        return getSecurePreferences(context).getInt(KEY_FAILED_ATTEMPTS, 0)
+    }
+
+    fun recordFailedAttempt(context: Context): Int {
+        val prefs = getSecurePreferences(context)
+        val currentAttempts = prefs.getInt(KEY_FAILED_ATTEMPTS, 0) + 1
+        val editor = prefs.edit().putInt(KEY_FAILED_ATTEMPTS, currentAttempts)
+        if (currentAttempts >= MAX_ATTEMPTS) {
+            editor.putLong(KEY_LOCKOUT_TIMESTAMP, System.currentTimeMillis())
+        }
+        editor.apply()
+        return currentAttempts
+    }
+
+    fun resetFailedAttempts(context: Context) {
+        getSecurePreferences(context).edit()
+            .remove(KEY_FAILED_ATTEMPTS)
+            .remove(KEY_LOCKOUT_TIMESTAMP)
+            .apply()
     }
 
     fun verifyPin(context: Context, enteredPin: String): Boolean {

@@ -4,6 +4,7 @@ import { Header } from '../../components/common/Header';
 import { Footer } from '../../components/common/Footer';
 import { RelockBehavior } from '../../types';
 import { LocalStorageService } from '../../services/storage';
+import { NativeBridgeService } from '../../services/nativeBridge';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -17,13 +18,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onResetA
   const handleUpdateRelock = (behavior: RelockBehavior) => {
     const updated = { ...config, relockBehavior: behavior };
     setConfig(updated);
-    LocalStorageService.saveLockConfig(updated);
+    NativeBridgeService.saveLockConfig(updated);
   };
 
   const handleToggleHaptics = () => {
     const updated = { ...config, hapticsEnabled: !config.hapticsEnabled };
     setConfig(updated);
-    LocalStorageService.saveLockConfig(updated);
+    NativeBridgeService.saveLockConfig(updated);
   };
 
   const relockOptions: { id: RelockBehavior; label: string; desc: string }[] = [
@@ -138,8 +139,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onResetA
               <div className="flex space-x-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    LocalStorageService.resetAll();
+                  onClick={async () => {
+                    await NativeBridgeService.resetAllData();
                     onResetApp();
                   }}
                   className="flex-1 py-2 rounded-xl bg-[#EF4444] text-white text-xs font-mono font-bold active:scale-95 transition-all"

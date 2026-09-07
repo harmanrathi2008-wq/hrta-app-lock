@@ -51,13 +51,22 @@ export const PinCreationScreen: React.FC<PinCreationScreenProps> = ({
       if (completedPin === firstPin) {
         setIsProcessing(true);
         try {
-          await NativeBridgeService.setMasterPin(completedPin);
-          onPinCreated();
+          const success = await NativeBridgeService.setMasterPin(completedPin);
+          if (success) {
+            onPinCreated();
+          } else {
+            setIsError(true);
+            setErrorMessage('Hardware cryptographic setup failed. Please retry.');
+            setCurrentInput('');
+            setStep('create');
+            setFirstPin('');
+          }
         } catch {
           setIsError(true);
           setErrorMessage('Cryptographic derivation failed. Please retry.');
           setCurrentInput('');
           setStep('create');
+          setFirstPin('');
         } finally {
           setIsProcessing(false);
         }

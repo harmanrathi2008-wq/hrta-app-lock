@@ -38,6 +38,10 @@ class AppMonitorService : Service() {
         private const val NOTIFICATION_ID = 8801
         private const val POLL_INTERVAL_MS = 250L
 
+        @Volatile
+        var isRunning: Boolean = false
+            private set
+
         private val unlockedSessions = ConcurrentHashMap<String, Long>()
 
         fun markPackageUnlocked(packageName: String) {
@@ -51,10 +55,16 @@ class AppMonitorService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         Log.i(TAG, "Initializing HRTA App Lock Background Engine")
         startForegroundNotification()
         registerScreenReceiver()
         startMonitoringLoop()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Sticky service: automatically recreate if killed by the OS
+        return START_STICKY
     }
 
     private fun startForegroundNotification() {
@@ -133,15 +143,31 @@ class AppMonitorService : Service() {
         }
     }
 
-    private fun handleAppSwitch(packageName: String) {
-        val protectedPkgs = getProtectedPackages()
-        if (protectedPkgs.contains(packageName)) {
-            val unlockTimestamp = unlockedSessions[packageName]
-            val isUnlocked = unlockTimestamp != null && (System.currentTimeMillis() - unlockTimestamp < 60000)
+    private fun handleAppSwitch(targetPkg: String) {
+        val prefs = getSharedPreferences("hrta_app_lock_prefs", Context.MODE_PRIVATE)
 
-            if (!isUnlocked) {
-                showLockScreen(packageName)
-            }
+        // 1. Check if master protection is paused
+        val protectionActive = prefs.getBoolean("protection_active", true)
+        if (!protectionActive) return
+
+        // 2. Check if the target package is protected
+        val protectedPkgs = prefs.getStringSet("protected_packages", emptySet()) ?: emptySet()
+        if (!protectedPkgs.contains(targetPkg)) return
+
+        // 3. Evaluate relock behavior
+        val relockBehavior = prefs.getString("relock_behavior", "TIMEOUT_1_MIN") ?: "TIMEOUT_1_MIN"
+        val unlockTimestamp = unlockedSessions[targetPkg]
+
+        val isUnlocked = when {
+            unlockTimestamp == null -> false
+            relockBehavior == "IMMEDIATELY" -> false
+            relockBehavior == "SCREEN_OFF" -> true // Kept alive until screen off broadcast
+            relockBehavior == "TIMEOUT_5_MIN" -> (System.currentTimeMillis() - unlockTimestamp < 5 * 60 * 1000L)
+            else -> (System.currentTimeMillis() - unlockTimestamp < 60 * 1000L) // TIMEOUT_1_MIN (default)
+        }
+
+        if (!isUnlocked) {
+            showLockScreen(targetPkg)
         }
     }
 
@@ -176,12 +202,8 @@ class AppMonitorService : Service() {
         return lastEventPackage
     }
 
-    private fun getProtectedPackages(): Set<String> {
-        val prefs: SharedPreferences = getSharedPreferences("hrta_app_lock_prefs", Context.MODE_PRIVATE)
-        return prefs.getStringSet("protected_packages", emptySet()) ?: emptySet()
-    }
-
     override fun onDestroy() {
+        isRunning = false
         isMonitoring = false
         handler.removeCallbacksAndMessages(null)
         try {

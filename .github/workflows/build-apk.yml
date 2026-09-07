@@ -7,6 +7,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Android APK
@@ -43,15 +46,16 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x android/gradlew
 
-      - name: Build Release APK
+      - name: Build and Sign Release APK
         run: |
           cd android
           ./gradlew assembleRelease --no-daemon
-
-      - name: Rename and Prepare APK
-        run: |
-          mkdir -p build-output
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk build-output/hrta-app-lock.apk 2>/dev/null || cp android/app/build/outputs/apk/debug/app-debug.apk build-output/hrta-app-lock.apk
+          # Generate signing keystore
+          keytool -genkey -v -keystore hrta_release.keystore -alias hrta -keyalg RSA -keysize 2048 -validity 10000 -storepass hrtasecure2026 -keypass hrtasecure2026 -dname "CN=Harman Rathi, OU=HRTA Security, O=HRTA, L=New Delhi, C=IN"
+          # Sign the unsigned APK using jarsigner (standard JDK tool)
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore hrta_release.keystore -storepass hrtasecure2026 -keypass hrtasecure2026 app/build/outputs/apk/release/app-release-unsigned.apk hrta
+          mkdir -p ../build-output
+          cp app/build/outputs/apk/release/app-release-unsigned.apk ../build-output/hrta-app-lock.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -59,20 +63,21 @@ jobs:
           name: hrta-app-lock-apk
           path: build-output/hrta-app-lock.apk
 
-      - name: Create GitHub Release (On Tag or Dispatch)
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.0.0
           files: build-output/hrta-app-lock.apk
-          name: HRTA App Lock Official Release
+          name: "HRTA App Lock Official Release v1.0.0"
           body: |
             ## HRTA SECURE SYSTEM
             ### DEVELOPED BY HARMAN RATHI
 
-            Official Android App Lock release (`hrta-app-lock.apk`).
-            - 100% Local-First & Zero Cloud Dependencies
-            - Cryptographically Secured
-            - Instant App Protection Overlay
+            Official signed Android App Lock release (`hrta-app-lock.apk`).
+            - Signed and installable on Android 8.0+
+            - 100% Local-First & Offline Privacy
+            - Cryptographic Hardware PIN Protection
+            - Instant Background Monitoring & 403 Forbidden Shield
           draft: false
           prerelease: false
         env:

@@ -12,7 +12,6 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.harmanrathi.applock.R
@@ -46,12 +45,18 @@ class LockActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Prevent screen capture / task snapshot of the lock screen
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
-        
+
         targetPackage = intent.getStringExtra(EXTRA_PACKAGE_NAME) ?: ""
         targetAppName = intent.getStringExtra(EXTRA_APP_NAME) ?: "Application"
+
+        // Dynamically load configured PIN length from hardware crypto store
+        pinLength = CryptoManager.getStoredPinLength(this)
+        if (pinLength != 4 && pinLength != 6) {
+            pinLength = 4
+        }
 
         setContentView(R.layout.activity_hrta_lock)
 
@@ -62,6 +67,13 @@ class LockActivity : Activity() {
 
         appNameText.text = targetAppName
         packageNameText.text = targetPackage
+
+        // Check if currently under cooldown lockout
+        val remainingCooldown = CryptoManager.getRemainingLockoutSeconds(this)
+        if (remainingCooldown > 0) {
+            errorText.text = "Too many attempts. Locked for ${remainingCooldown}s."
+            errorText.visibility = View.VISIBLE
+        }
 
         setupKeypad()
         renderPinDots()
@@ -98,13 +110,20 @@ class LockActivity : Activity() {
     }
 
     private fun handleDigit(digit: String) {
-        if (enteredPin.length < 6) {
+        val remainingLockout = CryptoManager.getRemainingLockoutSeconds(this)
+        if (remainingLockout > 0) {
+            errorText.text = "Too many attempts. Locked for ${remainingLockout}s."
+            errorText.visibility = View.VISIBLE
+            return
+        }
+
+        if (enteredPin.length < pinLength) {
             triggerHaptic()
             enteredPin.append(digit)
             renderPinDots()
             errorText.visibility = View.GONE
 
-            if (enteredPin.length >= pinLength) {
+            if (enteredPin.length == pinLength) {
                 verifyPin()
             }
         }
@@ -120,18 +139,36 @@ class LockActivity : Activity() {
     }
 
     private fun verifyPin() {
+        val remainingLockout = CryptoManager.getRemainingLockoutSeconds(this)
+        if (remainingLockout > 0) {
+            errorText.text = "Too many attempts. Locked for ${remainingLockout}s."
+            errorText.visibility = View.VISIBLE
+            enteredPin.clear()
+            renderPinDots()
+            return
+        }
+
         val pin = enteredPin.toString()
         val isValid = CryptoManager.verifyPin(this, pin)
         if (isValid) {
+            CryptoManager.resetFailedAttempts(this)
             AppMonitorService.markPackageUnlocked(targetPackage)
             finish()
             overridePendingTransition(0, 0)
         } else {
-            errorText.text = "Access Denied. Incorrect PIN."
+            val failedCount = CryptoManager.recordFailedAttempt(this)
+            val remainingAttempts = CryptoManager.MAX_ATTEMPTS - failedCount
+
+            if (remainingAttempts <= 0) {
+                val cooldownSec = CryptoManager.getRemainingLockoutSeconds(this)
+                errorText.text = "Too many failed attempts. Locked for ${cooldownSec}s."
+            } else {
+                errorText.text = "Access Denied. Incorrect PIN ($remainingAttempts attempts left)."
+            }
             errorText.visibility = View.VISIBLE
             enteredPin.clear()
             renderPinDots()
-            
+
             // Error vibration pattern
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
