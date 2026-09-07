@@ -60,22 +60,27 @@ jobs:
           ./gradlew testReleaseUnitTest --no-daemon
 
       - name: Setup Permanent Signing Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.HRTA_RELEASE_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.HRTA_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.HRTA_KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.HRTA_KEYSTORE_PASSWORD }}
         run: |
           mkdir -p android/app
-          if [ -n "${{ secrets.HRTA_RELEASE_KEYSTORE_BASE64 }}" ]; then
+          if [ -n "$KEYSTORE_BASE64" ]; then
             echo "Restoring permanent signing certificate from repository secret..."
-            echo "${{ secrets.HRTA_RELEASE_KEYSTORE_BASE64 }}" | base64 -d > android/app/hrta-release.keystore
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/hrta-release.keystore
           else
             echo "HRTA_RELEASE_KEYSTORE_BASE64 secret not found in repository settings."
             echo "Generating stable release signing keystore..."
             keytool -genkeypair -v \
               -keystore android/app/hrta-release.keystore \
-              -alias "${{ secrets.HRTA_KEY_ALIAS || 'hrtakey' }}" \
+              -alias "${KEY_ALIAS:-hrtakey}" \
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
-              -storepass "${{ secrets.HRTA_KEYSTORE_PASSWORD || 'hrtasecure2026' }}" \
-              -keypass "${{ secrets.HRTA_KEY_PASSWORD || 'hrtasecure2026' }}" \
+              -storepass "${KEYSTORE_PASSWORD:-hrtasecure2026}" \
+              -keypass "${KEY_PASSWORD:-hrtasecure2026}" \
               -dname "CN=Harman Rathi, OU=HRTA SECURE SYSTEM, O=HRTA, L=New Delhi, C=IN"
           fi
 
@@ -83,18 +88,29 @@ jobs:
         env:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           RELEASE_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '1.0.0' }}
-          HRTA_KEYSTORE_PASSWORD: ${{ secrets.HRTA_KEYSTORE_PASSWORD || 'hrtasecure2026' }}
-          HRTA_KEY_ALIAS: ${{ secrets.HRTA_KEY_ALIAS || 'hrtakey' }}
-          HRTA_KEY_PASSWORD: ${{ secrets.HRTA_KEY_PASSWORD || 'hrtasecure2026' }}
+          HRTA_KEYSTORE_PASSWORD: ${{ secrets.HRTA_KEYSTORE_PASSWORD }}
+          HRTA_KEY_ALIAS: ${{ secrets.HRTA_KEY_ALIAS }}
+          HRTA_KEY_PASSWORD: ${{ secrets.HRTA_KEY_PASSWORD }}
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon
+          export HRTA_KEYSTORE_PASSWORD="${HRTA_KEYSTORE_PASSWORD:-hrtasecure2026}"
+          export HRTA_KEY_ALIAS="${HRTA_KEY_ALIAS:-hrtakey}"
+          export HRTA_KEY_PASSWORD="${HRTA_KEY_PASSWORD:-hrtasecure2026}"
+          ./gradlew assembleRelease --stacktrace --no-daemon
           mkdir -p ../build-output
-          if [ ! -f app/build/outputs/apk/release/app-release.apk ]; then
-            echo "::error::Gradle failed to produce a signed release APK! Build halted."
+          if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk ../build-output/hrta-app-lock.apk
+          elif [ -f app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+              -keystore app/hrta-release.keystore \
+              -storepass "$HRTA_KEYSTORE_PASSWORD" \
+              -keypass "$HRTA_KEY_PASSWORD" \
+              app/build/outputs/apk/release/app-release-unsigned.apk "$HRTA_KEY_ALIAS"
+            cp app/build/outputs/apk/release/app-release-unsigned.apk ../build-output/hrta-app-lock.apk
+          else
+            echo "::error::Gradle failed to produce a release APK! Build halted."
             exit 1
           fi
-          cp app/build/outputs/apk/release/app-release.apk ../build-output/hrta-app-lock.apk
 
       - name: Verify APK Signatures (V1 / V2 / V3) & Compute SHA-256
         run: |
