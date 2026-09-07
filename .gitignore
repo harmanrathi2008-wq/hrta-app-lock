@@ -1,4 +1,4 @@
-﻿# HRTA Portal folder exclusion (separate repository)
+# HRTA Portal folder exclusion (separate repository)
 HRTA SYSTEM/
 
 # Node dependencies & caches
@@ -24,6 +24,7 @@ android/*.iml
 android/app/*.iml
 local.properties
 *.apk
+!public/downloads/*.apk
 *.aab
 
 # OS files

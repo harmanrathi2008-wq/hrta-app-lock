@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Lock, Smartphone, ShieldAlert, Check, ExternalLink } from 'lucide-react';
+import { Download, Lock, Smartphone, ShieldAlert, Check } from 'lucide-react';
 import { Footer } from '../../components/common/Footer';
 
 interface WebLandingPageProps {
@@ -10,18 +10,15 @@ export const WebLandingPage: React.FC<WebLandingPageProps> = ({ onBlockedAccess 
   const [downloading, setDownloading] = useState<boolean>(false);
   const [downloadStarted, setDownloadStarted] = useState<boolean>(false);
 
-  const releaseDownloadUrl = 'https://github.com/harmanrathi2008-wq/hrta-app-lock/releases/download/v1.0.0/hrta-app-lock.apk';
-  const releasesPageUrl = 'https://github.com/harmanrathi2008-wq/hrta-app-lock/releases';
+  const domainDownloadUrl = '/downloads/hrta-app-lock.apk';
 
   const handleDownload = () => {
     setDownloading(true);
     setDownloadStarted(true);
 
     const link = document.createElement('a');
-    link.href = releaseDownloadUrl;
+    link.href = domainDownloadUrl;
     link.setAttribute('download', 'hrta-app-lock.apk');
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -55,7 +52,7 @@ export const WebLandingPage: React.FC<WebLandingPageProps> = ({ onBlockedAccess 
           Designed to prevent unauthorized access. Protected by local device hardware.
         </p>
 
-        {/* Primary Download Button */}
+        {/* Primary Direct Domain Download Button */}
         <div className="w-full space-y-3 mb-6">
           <button
             onClick={handleDownload}
@@ -65,7 +62,7 @@ export const WebLandingPage: React.FC<WebLandingPageProps> = ({ onBlockedAccess 
             {downloading ? (
               <>
                 <Download className="w-5 h-5 text-[#070A10] animate-bounce" />
-                <span>Starting Download...</span>
+                <span>Starting Direct Download...</span>
               </>
             ) : downloadStarted ? (
               <>
@@ -81,31 +78,29 @@ export const WebLandingPage: React.FC<WebLandingPageProps> = ({ onBlockedAccess 
           </button>
 
           <div className="flex items-center justify-center space-x-3 text-[11px] font-mono text-[#64748B]">
-            <span>Official APK v1.0.0</span>
+            <span>Official Signed APK</span>
+            <span>•</span>
+            <span>Direct Domain Download</span>
             <span>•</span>
             <span>Android 8.0+</span>
-            <span>•</span>
-            <span>100% Offline</span>
           </div>
 
           {downloadStarted && (
-            <div className="p-3 rounded-xl bg-[#0D131F] border border-[#1F2B3E] text-left text-[11px] text-slate-400 space-y-1">
-              <div className="text-white font-bold flex items-center space-x-1.5">
+            <div className="p-3.5 rounded-xl bg-[#0D131F] border border-[#1F2B3E] text-left text-[11px] text-slate-400 space-y-1">
+              <div className="text-[#00F0FF] font-bold flex items-center space-x-1.5">
                 <Check className="w-3.5 h-3.5 text-[#00F0FF]" />
-                <span>Download Request Triggered</span>
+                <span>Downloading HRTA App Lock</span>
               </div>
-              <p>
-                If your browser blocked the download,{' '}
+              <p className="text-slate-300">
+                Direct file download triggered.{' '}
                 <a
-                  href={releasesPageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#00F0FF] hover:underline inline-flex items-center space-x-1 font-bold"
+                  href={domainDownloadUrl}
+                  download="hrta-app-lock.apk"
+                  className="text-[#00F0FF] hover:underline font-bold"
                 >
-                  <span>open GitHub Releases</span>
-                  <ExternalLink className="w-3 h-3 ml-0.5" />
+                  Click here to download directly
                 </a>{' '}
-                to download `hrta-app-lock.apk` directly.
+                if your browser blocked the prompt.
               </p>
             </div>
           )}
