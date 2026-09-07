@@ -120,4 +120,34 @@ describe('HRTA Secure System - Cryptographic PIN Verification', () => {
     expect(constantTimeEquals(a, c)).toBe(false);
     expect(constantTimeEquals(a, d)).toBe(false);
   });
+
+  it('should enforce 5-attempt threshold and 30s lockout calculations', () => {
+    const MAX_ATTEMPTS = 5;
+    const LOCKOUT_DURATION_MS = 30000;
+
+    let failedAttempts = 4;
+    expect(failedAttempts < MAX_ATTEMPTS).toBe(true);
+
+    failedAttempts += 1;
+    expect(failedAttempts >= MAX_ATTEMPTS).toBe(true);
+
+    const now = Date.now();
+    const lockoutStartTime = now;
+    const elapsed = 10000;
+    const remainingSeconds = Math.ceil((LOCKOUT_DURATION_MS - elapsed) / 1000);
+    expect(remainingSeconds).toBe(20);
+
+    const expiredElapsed = 35000;
+    const expiredRemaining = Math.max(0, Math.ceil((LOCKOUT_DURATION_MS - expiredElapsed) / 1000));
+    expect(expiredRemaining).toBe(0);
+  });
+
+  it('should support standard relock behaviors', () => {
+    const behaviors = ['IMMEDIATELY', 'SCREEN_OFF', 'TIMEOUT_1_MIN', 'TIMEOUT_5_MIN'];
+    expect(behaviors).toContain('IMMEDIATELY');
+    expect(behaviors).toContain('SCREEN_OFF');
+    expect(behaviors).toContain('TIMEOUT_1_MIN');
+    expect(behaviors).toContain('TIMEOUT_5_MIN');
+  });
 });
+

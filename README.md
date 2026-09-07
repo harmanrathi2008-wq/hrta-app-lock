@@ -1,4 +1,4 @@
-﻿# HRTA App Lock
+# HRTA App Lock
 
 <div align="center">
   <img src="public/assets/hrta_logo.png" alt="HRTA Logo" width="128" height="128" />
@@ -52,14 +52,14 @@ The application is engineered to prevent unauthorized access to selected applica
 ### 2. Cryptographic PIN Security
 - **Never Plaintext**: The master PIN is **never** stored in plain text anywhere (neither in React `localStorage` nor native files).
 - **PBKDF2-HMAC-SHA256**: Key derivation uses OWASP-recommended **100,000 iterations** with a 128-bit cryptographically secure random salt (`SecureRandom`).
-- **Hardware Keystore Integration**: Credential verifiers are protected locally via Android Keystore-backed `EncryptedSharedPreferences` where supported by the device hardware.
+- **Hardware Keystore with Cryptographic Fallback**: When hardware Keystore support is available on the device, credential verifiers are encrypted with AES-256-GCM via Android Keystore-backed `EncryptedSharedPreferences`. On devices without hardware TEE/StrongBox support, the engine safely falls back to private, sandboxed `SharedPreferences` storing salted PBKDF2-HMAC-SHA256 verifiers (100,000 iterations).
 - **Constant-Time Comparison**: Verification utilizes constant-time byte comparisons (`MessageDigest.isEqual`) to prevent timing side-channel attacks.
 
 ### 3. Native Android Engine
 - **Active App Detection**: Continuously monitors the active foreground task using Android `UsageStatsManager` (`UsageEvents`).
-- **Instant Overlay Shield**: Displays the HRTA security shield directly over the target application using `SYSTEM_ALERT_WINDOW` and `LockActivity`.
-- **Persistent Service**: Employs an Android Foreground Service with `specialUse` subtype (Android 14+ / API 34 compliance) to prevent the OS from terminating monitoring.
-- **Boot Recovery**: Restores protection automatically upon device restart via `RECEIVE_BOOT_COMPLETED` broadcast receiver.
+- **Full-Screen Activity Shield**: Displays the HRTA security shield directly over the target application using an optimized full-screen `LockActivity` launched with `FLAG_ACTIVITY_NEW_TASK`, `FLAG_ACTIVITY_NO_ANIMATION`, `FLAG_SECURE`, and `SYSTEM_ALERT_WINDOW` permission (allowing background start over apps on Android 10+ and OEM skins like Samsung One UI).
+- **Persistent Service**: Employs an Android Foreground Service with `specialUse` subtype (Android 14+ / API 34 compliance) that pauses polling when protection is deactivated to conserve battery.
+- **Boot Recovery**: Restores protection automatically upon device restart via `RECEIVE_BOOT_COMPLETED` broadcast receiver if protection was active.
 
 ---
 
@@ -70,7 +70,7 @@ HRTA App Lock requests **only** the permissions genuinely required for applicati
 | Permission | Purpose | Why It Is Required |
 | :--- | :--- | :--- |
 | **Usage Access** (`PACKAGE_USAGE_STATS`) | Foreground App Detection | Allows the local monitor to identify when a protected app is brought to the front. |
-| **Display over other apps** (`SYSTEM_ALERT_WINDOW`) | Lock Screen Overlay | Allows HRTA to render the security lock shield over the protected app instantly. |
+| **Display over other apps** (`SYSTEM_ALERT_WINDOW`) | Background Launch Authority | Grants HRTA authority to immediately surface the lock activity over target applications from background service. |
 | **Foreground Service** (`FOREGROUND_SERVICE`) | Process Keep-Alive | Ensures the security monitor remains active in the background. |
 | **Special Use** (`FOREGROUND_SERVICE_SPECIAL_USE`) | Android 14+ Compliance | Declares `App Lock security monitor` subtype in accordance with Android 14 policies. |
 | **Post Notifications** (`POST_NOTIFICATIONS`) | Service Notification | Required on Android 13+ to show the persistent "Protection Active" notification. |

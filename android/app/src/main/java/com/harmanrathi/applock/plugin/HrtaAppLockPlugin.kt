@@ -208,14 +208,8 @@ class HrtaAppLockPlugin : Plugin() {
     @PluginMethod
     fun stopMonitoringService(call: PluginCall) {
         getPrefs().edit().putBoolean("protection_active", false).apply()
-        val intent = Intent(context, AppMonitorService::class.java).apply {
-            action = AppMonitorService.ACTION_UPDATE_STATUS
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
+        val intent = Intent(context, AppMonitorService::class.java)
+        context.stopService(intent)
         val ret = JSObject().apply {
             put("success", true)
         }

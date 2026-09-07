@@ -14,17 +14,31 @@ interface SettingsScreenProps {
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onResetApp }) => {
   const [config, setConfig] = useState(LocalStorageService.getLockConfig());
   const [showConfirmReset, setShowConfirmReset] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isResetting, setIsResetting] = useState<boolean>(false);
 
-  const handleUpdateRelock = (behavior: RelockBehavior) => {
+  const handleUpdateRelock = async (behavior: RelockBehavior) => {
+    const prev = config;
     const updated = { ...config, relockBehavior: behavior };
     setConfig(updated);
-    NativeBridgeService.saveLockConfig(updated);
+    setErrorMessage('');
+    const success = await NativeBridgeService.saveLockConfig(updated);
+    if (!success) {
+      setConfig(prev);
+      setErrorMessage('Failed to save relock setting to device storage.');
+    }
   };
 
-  const handleToggleHaptics = () => {
+  const handleToggleHaptics = async () => {
+    const prev = config;
     const updated = { ...config, hapticsEnabled: !config.hapticsEnabled };
     setConfig(updated);
-    NativeBridgeService.saveLockConfig(updated);
+    setErrorMessage('');
+    const success = await NativeBridgeService.saveLockConfig(updated);
+    if (!success) {
+      setConfig(prev);
+      setErrorMessage('Failed to save haptics setting to device storage.');
+    }
   };
 
   const relockOptions: { id: RelockBehavior; label: string; desc: string }[] = [
@@ -52,6 +66,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onResetA
             LOCK PREFERENCES
           </h1>
         </div>
+
+        {errorMessage && (
+          <div className="p-3 rounded-xl bg-[#EF4444]/15 border border-[#EF4444]/30 text-[#EF4444] text-xs font-mono font-bold flex items-center justify-between">
+            <span>{errorMessage}</span>
+            <button
+              type="button"
+              onClick={() => setErrorMessage('')}
+              className="text-[#EF4444] hover:text-white text-sm ml-2"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Relock Behavior Selection */}
         <div className="p-4 rounded-2xl bg-[#0D131F] border border-[#1F2B3E] space-y-3">
@@ -139,13 +166,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack, onResetA
               <div className="flex space-x-2">
                 <button
                   type="button"
+                  disabled={isResetting}
                   onClick={async () => {
-                    await NativeBridgeService.resetAllData();
-                    onResetApp();
+                    setIsResetting(true);
+                    setErrorMessage('');
+                    const success = await NativeBridgeService.resetAllData();
+                    setIsResetting(false);
+                    if (success) {
+                      onResetApp();
+                    } else {
+                      setErrorMessage('Failed to reset native security data. Please try again.');
+                      setShowConfirmReset(false);
+                    }
                   }}
-                  className="flex-1 py-2 rounded-xl bg-[#EF4444] text-white text-xs font-mono font-bold active:scale-95 transition-all"
+                  className="flex-1 py-2 rounded-xl bg-[#EF4444] text-white text-xs font-mono font-bold active:scale-95 transition-all disabled:opacity-50"
                 >
-                  Yes, Reset Now
+                  {isResetting ? 'Resetting...' : 'Yes, Reset Now'}
                 </button>
                 <button
                   type="button"

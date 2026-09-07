@@ -61,13 +61,25 @@ class AppMonitorService : Service() {
         Log.i(TAG, "Initializing HRTA App Lock Background Engine")
         startForegroundNotification()
         registerScreenReceiver()
-        startMonitoringLoop()
+        val prefs = getSharedPreferences("hrta_app_lock_prefs", Context.MODE_PRIVATE)
+        val isActive = prefs.getBoolean("protection_active", true)
+        if (isActive) {
+            startMonitoringLoop()
+        } else {
+            Log.i(TAG, "Protection is paused on create: monitoring loop halted")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val prefs = getSharedPreferences("hrta_app_lock_prefs", Context.MODE_PRIVATE)
         val isActive = prefs.getBoolean("protection_active", true)
         updateNotification(isActive)
+        if (isActive) {
+            startMonitoringLoop()
+        } else {
+            stopMonitoringLoop()
+            Log.i(TAG, "Protection paused: halted 250ms polling loop to conserve battery")
+        }
         // Sticky service: automatically recreate if killed by the OS
         return START_STICKY
     }
@@ -157,7 +169,9 @@ class AppMonitorService : Service() {
     }
 
     private fun startMonitoringLoop() {
+        if (isMonitoring) return
         isMonitoring = true
+        handler.removeCallbacksAndMessages(null)
         handler.post(object : Runnable {
             override fun run() {
                 if (!isMonitoring) return
@@ -168,9 +182,16 @@ class AppMonitorService : Service() {
                     Log.e(TAG, "Monitoring loop tick error", e)
                 }
 
-                handler.postDelayed(this, POLL_INTERVAL_MS)
+                if (isMonitoring) {
+                    handler.postDelayed(this, POLL_INTERVAL_MS)
+                }
             }
         })
+    }
+
+    private fun stopMonitoringLoop() {
+        isMonitoring = false
+        handler.removeCallbacksAndMessages(null)
     }
 
     private fun checkForegroundApp() {
@@ -252,8 +273,7 @@ class AppMonitorService : Service() {
 
     override fun onDestroy() {
         isRunning = false
-        isMonitoring = false
-        handler.removeCallbacksAndMessages(null)
+        stopMonitoringLoop()
         try {
             unregisterReceiver(screenReceiver)
         } catch (ignored: Exception) {}

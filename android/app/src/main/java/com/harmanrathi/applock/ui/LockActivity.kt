@@ -121,7 +121,13 @@ class LockActivity : Activity() {
         }
     }
 
+    private fun isHapticsEnabled(): Boolean {
+        val prefs = getSharedPreferences("hrta_app_lock_prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean("haptics_enabled", true)
+    }
+
     private fun triggerHaptic() {
+        if (!isHapticsEnabled()) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
             vibratorManager?.defaultVibrator?.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE))
@@ -194,7 +200,7 @@ class LockActivity : Activity() {
             renderPinDots()
 
             // Error vibration pattern
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (isHapticsEnabled() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
                 vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 80, 50, 80), -1))
             }

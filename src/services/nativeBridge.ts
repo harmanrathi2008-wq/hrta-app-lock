@@ -202,29 +202,40 @@ export class NativeBridgeService {
   }
 
   static async saveLockConfig(config: LockConfig): Promise<boolean> {
-    LocalStorageService.saveLockConfig(config);
     if (this.isNative()) {
       try {
         const res = await HrtaAppLockPlugin.saveLockConfig(config);
-        return !!res.success;
+        if (res && res.success) {
+          LocalStorageService.saveLockConfig(config);
+          return true;
+        }
+        console.error('[HRTA Native Bridge] saveLockConfig native returned failure');
+        return false;
       } catch (err) {
-        console.warn('[HRTA Native Bridge] saveLockConfig failed:', err);
+        console.error('[HRTA Native Bridge] saveLockConfig failed:', err);
+        return false;
       }
     }
+    LocalStorageService.saveLockConfig(config);
     return true;
   }
 
   static async resetAllData(): Promise<boolean> {
-    LocalStorageService.resetAll();
     if (this.isNative()) {
       try {
         const res = await HrtaAppLockPlugin.resetAllData();
-        return !!res.success;
+        if (res && res.success) {
+          LocalStorageService.resetAll();
+          return true;
+        }
+        console.error('[HRTA Native Bridge] resetAllData native returned failure');
+        return false;
       } catch (err) {
         console.error('[HRTA Native Bridge] resetAllData failed:', err);
         return false;
       }
     }
+    LocalStorageService.resetAll();
     return true;
   }
 
