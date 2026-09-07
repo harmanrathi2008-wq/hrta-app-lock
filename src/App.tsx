@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { AppScreen } from './types';
 import { LocalStorageService } from './services/storage';
 import { NativeBridgeService } from './services/nativeBridge';
+import { WebLandingPage } from './pages/web/WebLandingPage';
+import { WebForbiddenPage } from './pages/web/WebForbiddenPage';
 import { WelcomeScreen } from './pages/onboarding/WelcomeScreen';
 import { PinCreationScreen } from './pages/onboarding/PinCreationScreen';
 import { PermissionScreen } from './pages/onboarding/PermissionScreen';
@@ -13,7 +16,7 @@ import { SecurityPrivacyScreen } from './pages/settings/SecurityPrivacyScreen';
 import { OemGuideScreen } from './pages/settings/OemGuideScreen';
 
 export const App: React.FC = () => {
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>('ONBOARDING_WELCOME');
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>('WEB_LANDING');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [lockTargetApp, setLockTargetApp] = useState<{ name: string; pkg: string }>({
     name: 'YouTube',
@@ -27,6 +30,7 @@ export const App: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const requestedPkg = params.get('lockPackage');
       const requestedName = params.get('appName');
+      const previewMode = params.get('mode');
 
       if (requestedPkg) {
         setLockTargetApp({
@@ -39,7 +43,19 @@ export const App: React.FC = () => {
         return;
       }
 
-      // Check onboarding & PIN status
+      // If running on web browser/domain (non-native), enforce Web Landing & 403 Gate
+      if (!Capacitor.isNativePlatform() && previewMode !== 'app') {
+        const path = window.location.pathname;
+        if (path === '/403' || path === '/forbidden' || path === '/blocked') {
+          setCurrentScreen('WEB_FORBIDDEN_403');
+        } else {
+          setCurrentScreen('WEB_LANDING');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Native Android Environment: check onboarding & PIN status
       const pinConfigured = LocalStorageService.isPinSet();
       const onboardingCompleted = LocalStorageService.isOnboardingCompleted();
 
@@ -82,7 +98,24 @@ export const App: React.FC = () => {
     );
   }
 
-  // 1. Onboarding: Welcome
+  // Web-only distribution & 403 gate screens
+  if (currentScreen === 'WEB_LANDING') {
+    return (
+      <WebLandingPage
+        onBlockedAccess={() => setCurrentScreen('WEB_FORBIDDEN_403')}
+      />
+    );
+  }
+
+  if (currentScreen === 'WEB_FORBIDDEN_403') {
+    return (
+      <WebForbiddenPage
+        onBackToLanding={() => setCurrentScreen('WEB_LANDING')}
+      />
+    );
+  }
+
+  // 1. Onboarding: Welcome (Native Android)
   if (currentScreen === 'ONBOARDING_WELCOME') {
     return <WelcomeScreen onStart={() => setCurrentScreen('ONBOARDING_PIN')} />;
   }

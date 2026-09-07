@@ -24,6 +24,8 @@ export interface LockConfig {
 }
 
 export type AppScreen = 
+  | 'WEB_LANDING'
+  | 'WEB_FORBIDDEN_403'
   | 'ONBOARDING_WELCOME'
   | 'ONBOARDING_PIN'
   | 'ONBOARDING_PERMISSIONS'
